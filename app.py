@@ -703,7 +703,7 @@ elif st.session_state["peran"] == "Apoteker":
 
     with tab_apt5:
         st.subheader(f"🗓️ Peringatan Kedaluwarsa & Manajemen Batch FEFO - Cabang {st.session_state['kode_cabang']}")
-        st.caption("Menampilkan seluruh batch obat berdasarkan tanggal kedaluwarsa terdekat (FEFO). Apoteker juga dapat mencatat penerimaan batch obat baru yang datang ke cabang.")
+        st.caption("Menampilkan seluruh batch obat berdasarkan tanggal kedaluwarsa terdekat. Apoteker juga dapat mencatat penerimaan batch obat baru yang datang ke cabang.")
         
         # 1. FORM PENERIMAAN BATCH OBAT BARU DI CABANG
         with st.expander("➕ Input Penerimaan Batch Obat Masuk (PBF / Suplai Baru)", expanded=False):
@@ -826,7 +826,6 @@ elif st.session_state["peran"] == "Apoteker":
                         st.dataframe(kritis[["nama_obat","no_batch","tanggal_kedaluwarsa","jumlah_stok_batch","hari_tersisa","status_fefo"]], use_container_width=True)
                         st.markdown("---")
                     
-                    st.markdown("##### 📋 Semua Batch (Urutan FEFO: Exp Terdekat → Terjauh)")
                     st.dataframe(
                         df_fefo[["nama_obat","no_batch","tanggal_kedaluwarsa","jumlah_stok_batch","hari_tersisa","status_fefo"]], 
                         use_container_width=True
@@ -834,7 +833,7 @@ elif st.session_state["peran"] == "Apoteker":
                 else:
                     st.info("Belum ada data batch obat di cabang ini. Gunakan tombol '➕ Input Penerimaan Batch Obat Masuk' di atas untuk input batch baru.")
             except Exception as e_fefo:
-                st.error(f"Tabel obat_batch belum tersedia: {e_fefo}. Jalankan setup_database.py terlebih dahulu.")
+                st.error(f"Tabel obat_batch belum tersedia: {e_fefo}. Jalankan scripts\\setup_database.py terlebih dahulu.")
             finally:
                 cur.close()
                 conn.close()
@@ -848,7 +847,7 @@ elif st.session_state["peran"] == "Admin_Pusat":
         "🏢 Master Cabang",
         "👥 Manajemen Pengguna",
         "📊 Alokasi Stok Multi-Cabang",
-        "📦 Batch Obat (FEFO)",
+        "📦 Batch Obat",
         "🔍 Algoritma Search & Sort",
         "🌐 Laporan Konsolidasi Seluruh Cabang",
         "📈 Pemantauan Resource"
@@ -1449,14 +1448,13 @@ elif st.session_state["peran"] == "Admin_Pusat":
         else:
             st.warning("Pastikan data Master Cabang dan Master Obat sudah terisi terlebih dahulu.")
             
-        st.info("💡 **Kelola Batch & Kedaluwarsa:** Untuk mencatat nomor batch fisik dan tanggal kedaluwarsa (FEFO), silakan buka tab **📦 Batch Obat (FEFO)** di atas.")
+        st.info("💡 **Kelola Batch & Kedaluwarsa:** Untuk mencatat nomor batch fisik dan tanggal kedaluwarsa, silakan buka tab **📦 Batch Obat** di atas.")
 
     # --------------------------------------------------------------------------
     # TAB 5: MANAJEMEN BATCH OBAT (FEFO: FIRST-EXPIRED FIRST-OUT)
     # --------------------------------------------------------------------------
     with tab_batch:
-        st.subheader("📦 Manajemen Batch Obat & Tanggal Kedaluwarsa (FEFO)")
-        st.info("ℹ️ **Prinsip FEFO (First-Expired, First-Out):** Setiap pengiriman obat dari pemasok/PBF memiliki nomor batch dan tanggal kedaluwarsa tersendiri. Saat kasir/apoteker melakukan penjualan, sistem otomatis memotong stok dari batch dengan tanggal kedaluwarsa terdekat terlebih dahulu.")
+        st.subheader("📦 Manajemen Batch Obat & Tanggal Kedaluwarsa")
         
         conn_b_info = get_db()
         db_cabang_b = []
@@ -1540,7 +1538,6 @@ elif st.session_state["peran"] == "Admin_Pusat":
 
         # TABEL MONITORING BATCH
         st.divider()
-        st.markdown("##### 📋 Daftar Seluruh Batch Obat di Semua Cabang (Urutan FEFO)")
         
         conn_bl = get_db()
         if conn_bl:

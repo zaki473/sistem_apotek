@@ -27,7 +27,7 @@ Merancang arsitektur basis data relasional 3NF, menyusun DDL/DML, stored procedu
 5. **View Stok Kritis:** Membangun view `v_stok_kritis` untuk otomatisasi alert re-stock ketika stok fisik $\le$ stok minimum.
 6. **Refaktorisasi Modul Legacy:** Menghapus konkatenasi string SQL Injection, menggantinya dengan Prepared Statement, dan mengoptimalkan kueri laporan bulanan.
 7. **Multi-Environment:** Mengonfigurasi `config.py` yang memisahkan `development`, `staging`, dan `production`.
-8. **Analisis FEFO:** Membuat skrip migrasi tabel `obat_batch` untuk penjualan berbasis kedaluwarsa tercepat beserta rencana rollback.
+8. **Analisis FEFO:** Membuat skrip migrasi `database/migrations/migrasi_staging_fefo.sql` untuk tabel `obat_batch` dan penjualan berbasis kedaluwarsa tercepat beserta rencana rollback.
 9. **Monitoring Resource:** Menampilkan visualisasi grafis koneksi jam sibuk dengan garis ambang batas kritis (Threshold: 50 koneksi).
 10. **Standar Keamanan (ISO 27001):** Menyusun matriks RBAC dan tabel audit trail `log_aktivitas`.
 
@@ -56,7 +56,7 @@ Merancang arsitektur basis data relasional 3NF, menyusun DDL/DML, stored procedu
 | 10 | J.620100.042.01 | Konfigurasi Environment | File `config.py` memisahkan Development, Staging, dan Production |
 | 11 | J.620100.043.01 | Menganalisis Dampak Perubahan | Fitur Batch & Tanggal Kedaluwarsa (FEFO) |
 | 12 | J.620100.045.01 | Pemantauan Resource | Grafik pemantauan koneksi jam sibuk (17.00-20.00) vs batas atas 50 koneksi |
-| 13 | J.620100.047.01 | Pembaharuan Perangkat Lunak | Skrip migrasi `migrasi_staging_fefo.sql` & skrip rollback di staging |
+| 13 | J.620100.047.01 | Pembaharuan Perangkat Lunak | Skrip migrasi `database/migrations/migrasi_staging_fefo.sql` & skrip rollback di staging |
 | 14 | J.62090.011.01 | Menerapkan Standar Keamanan | SNI ISO/IEC 27001, Matriks RBAC, Password Hashing SHA-256 (One-Way Hashing), Validasi Mandatory Input (Zero-Empty-Field) |
 
 ---
@@ -91,12 +91,13 @@ Merancang arsitektur basis data relasional 3NF, menyusun DDL/DML, stored procedu
    - Akses tab *Alokasi Stok Multi-Cabang* (dropdown dinamis membaca dari basis data).
    - Akses tab *Algoritma Search & Sort*, *Laporan Konsolidasi*, dan *Pemantauan Resource (Threads_connected vs batas 50)*.
 
-6. **Uji 6: Demonstrasi Multi-Environment Staging vs Production (Poin 10 & 13)**
-   - Di Sidebar, perhatikan switcher environment: **Development**, **Staging**, dan **Production**.
-   - Saat beralih ke **Production**, sistem menampilkan banner merah mencolok dan safety confirmation checkbox pada aksi penghapusan data.
-   - Saat beralih ke **Staging**, sistem terhubung ke `db_apotek_staging`.
-   - Buka tab **"🚀 Staging & Production (DevOps)"** di portal Admin Pusat:
-     - Tunjukkan perbandingan metrik tabel antara Staging dan Production.
-     - Klik tombol **"▶️ Terapkan Patch FEFO ke Staging"**: skrip migrasi `migrasi_staging_fefo.sql` dieksekusi di Staging dan membuat tabel `obat_batch` tanpa mengganggu database Production (`db_apotek_sehat`).
-     - Klik tombol **"⏪ Jalankan Rollback di Staging"**: skema Staging kembali ke 7 tabel murni ERD secara aman.
-     - Ini membuktikan pemahaman mendalam tentang siklus rilis perangkat lunak (Release Lifecycle) dan mitigasi risiko operasional.
+6. **Uji 6: Demonstrasi Manajemen Batch & FEFO Terpadu (Poin 11 & 13)**
+   - Di akun `admin_pusat`, buka tab **"📦 Batch Obat (FEFO)"**:
+     - Amati 4 kartu indikator: 🔴 Kadaluarsa, 🟠 Kritis (<30 hari), 🟡 Perhatian (<90 hari), dan 🟢 Aman.
+     - Coba form **"Form Input Batch Obat Baru ke Cabang"** dengan memasukkan nomor batch baru dan tanggal kedaluwarsa.
+     - Perhatikan bahwa kueri secara atomik menyinkronkan stok agregat di tabel `stok`.
+   - Di akun `apoteker_jkt`, buka tab **"🗓️ Peringatan Kedaluwarsa & Manajemen Batch FEFO"**:
+     - Apoteker dapat menginput penerimaan batch baru di cabangnya via form expander.
+   - Di akun `kasir_jkt`:
+     - Tunjukkan bahwa saat kasir menjual obat, dropdown menampilkan info tanggal kedaluwarsa terdekat, dan sistem memotong stok batch dengan tanggal kedaluwarsa paling awal terlebih dahulu (FEFO).
+   - Di Sidebar, terdapat tombol **"🔄 Sinkronkan Database Aktif"** untuk self-healing skema 8 tabel ERD secara otomatis di database aktif.

@@ -26,7 +26,7 @@ if %errorlevel% neq 0 (
 
 echo.
 echo [2/3] Menginisialisasi skema basis data, tabel, view, procedure, dan seed data...
-"C:\Users\M S I\AppData\Local\Programs\Python\Python314\python.exe" setup_database.py
+"C:\Users\M S I\AppData\Local\Programs\Python\Python314\python.exe" scripts\setup_database.py
 
 echo.
 echo [3/3] Menjalankan Web Aplikasi Streamlit...
