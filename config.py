@@ -2,7 +2,6 @@
 # ==============================================================================
 # KONFIGURASI MULTI-ENVIRONMENT (Menjawab Poin 10 Dokumen FR.IA.04A)
 # Memisahkan konfigurasi Development, Staging, dan Production secara terisolasi.
-# ID Asesi: dcea8c3b-658a-491e-8a7c-6b47a6492a2f
 # ==============================================================================
 
 import mysql.connector
@@ -15,7 +14,7 @@ ENV_CONFIG = {
         "user": "app_apotek",
         "password": "PasswordApotek123!",
         "log_level": "DEBUG",
-        "max_connection_threshold": 50,  # Batas atas koneksi (Poin 12)
+        "max_connection_threshold": 50, 
         "deskripsi": "Lingkungan pengembangan lokal untuk uji coba fitur baru & debugging."
     },
     "staging": {

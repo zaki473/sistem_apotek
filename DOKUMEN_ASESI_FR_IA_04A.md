@@ -57,7 +57,7 @@ Merancang arsitektur basis data relasional 3NF, menyusun DDL/DML, stored procedu
 | 11 | J.620100.043.01 | Menganalisis Dampak Perubahan | Fitur Batch & Tanggal Kedaluwarsa (FEFO) |
 | 12 | J.620100.045.01 | Pemantauan Resource | Grafik pemantauan koneksi jam sibuk (17.00-20.00) vs batas atas 50 koneksi |
 | 13 | J.620100.047.01 | Pembaharuan Perangkat Lunak | Skrip migrasi `migrasi_staging_fefo.sql` & skrip rollback di staging |
-| 14 | J.62090.011.01 | Menerapkan Standar Keamanan | SNI ISO/IEC 27001, Matriks RBAC, audit trail `log_aktivitas` |
+| 14 | J.62090.011.01 | Menerapkan Standar Keamanan | SNI ISO/IEC 27001, Matriks RBAC, Password Hashing SHA-256 (One-Way Hashing), Validasi Mandatory Input (Zero-Empty-Field) |
 
 ---
 
@@ -84,7 +84,19 @@ Merancang arsitektur basis data relasional 3NF, menyusun DDL/DML, stored procedu
    - Hasil: Transaksi berhasil diproses.
    - Buka tab *Peringatan Stok Kritis*: Tampil data obat yang stoknya $\le$ stok minimum (`v_stok_kritis`).
 
-5. **Uji 5: Admin Pusat (CRUD Master Data & Monitoring)**
+5. **Uji 5: Admin_Pusat (CRUD Master Data & Monitoring)**
    - Logout lalu Login sebagai `admin_pusat` (Password: `admin123`).
-   - Akses tab *Master Obat*, coba fitur Create, Update harga, dan Delete.
-   - Akses tab *Algoritma Search & Sort*, *Code Review*, *FEFO*, dan *Pemantauan Resource*.
+   - Akses tab *Master Obat*, coba fitur Create (kode auto-increment OBTxxx), Update harga, dan Delete (dilengkapi Safety Guard di Production).
+   - Akses tab *Master Cabang* (kode auto-increment CAB-xxx, nama unik).
+   - Akses tab *Alokasi Stok Multi-Cabang* (dropdown dinamis membaca dari basis data).
+   - Akses tab *Algoritma Search & Sort*, *Laporan Konsolidasi*, dan *Pemantauan Resource (Threads_connected vs batas 50)*.
+
+6. **Uji 6: Demonstrasi Multi-Environment Staging vs Production (Poin 10 & 13)**
+   - Di Sidebar, perhatikan switcher environment: **Development**, **Staging**, dan **Production**.
+   - Saat beralih ke **Production**, sistem menampilkan banner merah mencolok dan safety confirmation checkbox pada aksi penghapusan data.
+   - Saat beralih ke **Staging**, sistem terhubung ke `db_apotek_staging`.
+   - Buka tab **"🚀 Staging & Production (DevOps)"** di portal Admin Pusat:
+     - Tunjukkan perbandingan metrik tabel antara Staging dan Production.
+     - Klik tombol **"▶️ Terapkan Patch FEFO ke Staging"**: skrip migrasi `migrasi_staging_fefo.sql` dieksekusi di Staging dan membuat tabel `obat_batch` tanpa mengganggu database Production (`db_apotek_sehat`).
+     - Klik tombol **"⏪ Jalankan Rollback di Staging"**: skema Staging kembali ke 7 tabel murni ERD secara aman.
+     - Ini membuktikan pemahaman mendalam tentang siklus rilis perangkat lunak (Release Lifecycle) dan mitigasi risiko operasional.

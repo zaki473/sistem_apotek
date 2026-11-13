@@ -11,7 +11,6 @@ USE db_apotek_sehat;
 -- PEMBERSIHAN TABEL & OBJEK DI LUAR BATAS ERD RESMI
 -- ------------------------------------------------------------------------------
 DROP TABLE IF EXISTS log_aktivitas;
-DROP TABLE IF EXISTS obat_batch;
 DROP TRIGGER IF EXISTS trg_audit_perubahan_harga;
 DROP FUNCTION IF EXISTS fn_hitung_total_faktur;
 
@@ -49,7 +48,8 @@ CREATE TABLE IF NOT EXISTS cabang (
     nama_cabang VARCHAR(100) NOT NULL,
     alamat VARCHAR(255) NULL,
     telepon VARCHAR(20) NULL,
-    CONSTRAINT pk_cabang PRIMARY KEY (kode_cabang)
+    CONSTRAINT pk_cabang PRIMARY KEY (kode_cabang),
+    CONSTRAINT uq_cabang_nama UNIQUE (nama_cabang)
 ) ENGINE=InnoDB;
 
 -- ------------------------------------------------------------------------------
@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS pengguna (
     username VARCHAR(50) NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     nama_lengkap VARCHAR(100) NOT NULL,
-    peran ENUM('Admin Pusat', 'Apoteker', 'Kasir') NOT NULL,
+    peran ENUM('Admin_Pusat', 'Apoteker', 'Kasir') NOT NULL,
     CONSTRAINT pk_pengguna PRIMARY KEY (id_pengguna),
     CONSTRAINT uq_pengguna_username UNIQUE (username),
     CONSTRAINT fk_pengguna_cabang FOREIGN KEY (kode_cabang) 
@@ -132,6 +132,28 @@ CREATE TABLE IF NOT EXISTS detail_penjualan (
 ) ENGINE=InnoDB;
 
 -- ------------------------------------------------------------------------------
+-- 8. TABEL: obat_batch (FITUR FEFO: FIRST-EXPIRED, FIRST-OUT)
+-- ------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS obat_batch (
+    id_batch INT AUTO_INCREMENT NOT NULL,
+    no_batch VARCHAR(50) NOT NULL,
+    kode_cabang VARCHAR(10) NOT NULL,
+    kode_obat VARCHAR(20) NOT NULL,
+    tanggal_kedaluwarsa DATE NOT NULL,
+    jumlah_stok_batch INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT pk_obat_batch PRIMARY KEY (id_batch),
+    CONSTRAINT uq_batch_cabang UNIQUE (no_batch, kode_cabang, kode_obat),
+    CONSTRAINT fk_batch_cabang FOREIGN KEY (kode_cabang) 
+        REFERENCES cabang(kode_cabang) ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_batch_obat FOREIGN KEY (kode_obat) 
+        REFERENCES obat(kode_obat) ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+ALTER TABLE detail_penjualan ADD COLUMN IF NOT EXISTS no_batch VARCHAR(50) NULL AFTER kode_obat;
+CREATE INDEX idx_batch_expiry ON obat_batch(kode_cabang, kode_obat, tanggal_kedaluwarsa);
+
+-- ------------------------------------------------------------------------------
 -- INDEKS PERFORMA
 -- ------------------------------------------------------------------------------
 CREATE INDEX idx_obat_nama ON obat(nama_obat);
@@ -155,6 +177,33 @@ JOIN cabang c ON s.kode_cabang = c.kode_cabang
 JOIN obat o ON s.kode_obat = o.kode_obat
 JOIN kategori_obat k ON o.kode_kategori = k.kode_kategori
 WHERE s.jumlah_stok <= o.stok_minimum;
+
+-- ------------------------------------------------------------------------------
+-- VIEW: v_peringatan_kedaluwarsa (FITUR FEFO: EXPIRED DATE ALERT)
+-- ------------------------------------------------------------------------------
+CREATE OR REPLACE VIEW v_peringatan_kedaluwarsa AS
+SELECT 
+    b.id_batch,
+    b.kode_cabang,
+    c.nama_cabang,
+    b.kode_obat,
+    o.nama_obat,
+    k.nama_kategori,
+    b.no_batch,
+    b.tanggal_kedaluwarsa,
+    b.jumlah_stok_batch,
+    DATEDIFF(b.tanggal_kedaluwarsa, CURDATE()) AS sisa_hari,
+    CASE 
+        WHEN DATEDIFF(b.tanggal_kedaluwarsa, CURDATE()) <= 0 THEN '🔴 KEDALUWARSA'
+        WHEN DATEDIFF(b.tanggal_kedaluwarsa, CURDATE()) <= 90 THEN '🟡 KRITIS (< 3 Bulan)'
+        ELSE '🟢 AMAN'
+    END AS status_kedaluwarsa
+FROM obat_batch b
+JOIN cabang c ON b.kode_cabang = c.kode_cabang
+JOIN obat o ON b.kode_obat = o.kode_obat
+JOIN kategori_obat k ON o.kode_kategori = k.kode_kategori
+WHERE b.jumlah_stok_batch > 0
+ORDER BY b.tanggal_kedaluwarsa ASC;
 
 -- ------------------------------------------------------------------------------
 -- STORED PROCEDURE: sp_simpan_transaksi (Sesuai ID & ERD)
@@ -255,10 +304,10 @@ INSERT IGNORE INTO kategori_obat (kode_kategori, nama_kategori) VALUES
 ('KAT04', 'Alat Kesehatan & Suplemen');
 
 INSERT IGNORE INTO pengguna (id_pengguna, kode_cabang, username, password_hash, nama_lengkap, peran) VALUES
-(1, NULL, 'admin_pusat', 'admin123', 'Budi Santoso, S.Kom', 'Admin Pusat'),
-(2, 'JKT', 'apoteker_jkt', 'apoteker123', 'apt. Siti Rahmawati, S.Farm', 'Apoteker'),
-(3, 'JKT', 'kasir_jkt', 'kasir123', 'Dewi Lestari', 'Kasir'),
-(4, 'BDG', 'kasir_bdg', 'kasir123', 'Ahmad Dani', 'Kasir');
+(1, NULL, 'admin_pusat', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', 'Budi Santoso, S.Kom', 'Admin_Pusat'),
+(2, 'JKT', 'apoteker_jkt', '73c090680e550c608f6c31bfecadad71060fa596bf9bf94f997f394464c243eb', 'apt. Siti Rahmawati, S.Farm', 'Apoteker'),
+(3, 'JKT', 'kasir_jkt', 'ef0d45ee0c9616d63428f5dd479a941e17dffcf6ba8e55e5d36e2f185aa8a966', 'Dewi Lestari', 'Kasir'),
+(4, 'BDG', 'kasir_bdg', 'ef0d45ee0c9616d63428f5dd479a941e17dffcf6ba8e55e5d36e2f185aa8a966', 'Ahmad Dani', 'Kasir');
 
 INSERT IGNORE INTO obat (kode_obat, kode_kategori, nama_obat, satuan, harga_jual, stok_minimum) VALUES
 ('OBT001', 'KAT01', 'Paracetamol 500mg', 'Strip', 8500.00, 20),
@@ -308,3 +357,31 @@ INSERT IGNORE INTO detail_penjualan (id_detail_penjualan, id_penjualan, kode_oba
 (3, 3, 'OBT006', 2, 16000.00, 32000.00),
 (4, 4, 'OBT002', 2, 6000.00, 12000.00),
 (5, 5, 'OBT007', 1, 38000.00, 38000.00);
+
+-- Data Seed Batch Obat (FEFO)
+INSERT IGNORE INTO obat_batch (no_batch, kode_cabang, kode_obat, tanggal_kedaluwarsa, jumlah_stok_batch) VALUES
+('PCT-2026-A1', 'JKT', 'OBT001', '2026-06-15', 40),
+('PCT-2027-B2', 'JKT', 'OBT001', '2027-01-20', 60),
+('ANT-2026-A1', 'JKT', 'OBT002', '2026-05-10', 30),
+('ANT-2026-B2', 'JKT', 'OBT002', '2026-11-30', 50),
+('PND-2026-A1', 'JKT', 'OBT003', '2026-08-14', 60),
+('CTM-2026-A1', 'JKT', 'OBT004', '2026-07-20', 50),
+('DCL-2026-A1', 'JKT', 'OBT005', '2026-09-10', 40),
+('AMX-2026-A1', 'JKT', 'OBT006', '2026-06-30', 45),
+('CFX-2026-A1', 'JKT', 'OBT007', '2026-04-05', 10),
+('CFX-2027-B2', 'JKT', 'OBT007', '2027-03-15', 20),
+('AML-2026-A1', 'JKT', 'OBT008', '2026-10-12', 35),
+('MET-2026-A1', 'JKT', 'OBT009', '2026-12-05', 25),
+('VTC-2026-A1', 'JKT', 'OBT010', '2026-05-20', 8),
+('IMB-2026-A1', 'JKT', 'OBT011', '2026-06-18', 5),
+('MKP-2027-A1', 'JKT', 'OBT012', '2027-05-10', 40),
+('PCT-2026-BDG', 'BDG', 'OBT001', '2026-07-15', 75),
+('ANT-2026-BDG', 'BDG', 'OBT002', '2026-08-20', 50),
+('PCT-2026-SBY', 'SBY', 'OBT001', '2026-09-10', 90);
+
+-- Sinkronisasi stok fisik dengan total batch
+INSERT INTO stok (kode_cabang, kode_obat, jumlah_stok)
+SELECT kode_cabang, kode_obat, SUM(jumlah_stok_batch)
+FROM obat_batch
+GROUP BY kode_cabang, kode_obat
+ON DUPLICATE KEY UPDATE jumlah_stok = VALUES(jumlah_stok);

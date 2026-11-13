@@ -5,7 +5,6 @@ cls
 echo ==============================================================================
 echo   SISTEM INVENTORI DAN PENJUALAN APOTEK MULTI-CABANG (PT SEHAT BERSAMA FARMA)
 echo   Dokumen Uji Kompetensi: FR.IA.04A (Programmer Basis Data - SKK-26/20/2024)
-echo   ID Asesi Terverifikasi: dcea8c3b-658a-491e-8a7c-6b47a6492a2f
 echo ==============================================================================
 echo.
 
